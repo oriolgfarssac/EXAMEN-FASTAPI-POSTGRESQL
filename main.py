@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 import app
 from MySQLdb import connect, Error
 from fastapi import HTTPException
@@ -68,10 +68,54 @@ async def add_user(item: Formulario) -> UserSchema:
     except Error as e:
         raise Exception(f"Error de base de datos: {str(e)}")
 
+async def get_users() -> List[UserSchema]:
+    try:
+        conn = connect(
+            host="localhost",
+            user="root",
+            password="root",
+            database="mydatabase"
+        )
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT nombre, apellido, correo_electronico, descripcion, curso, ano, codigo_postal FROM Usuarios"
+        )
+        result = cursor.fetchall()
+
+        users = []
+
+        for row in result:
+            user = UserSchema(
+                nombre=row[0],
+                apellido=row[1],
+                correo_electronico=row[2],
+                descripcion=row[3],
+                curso=row[4],
+                ano=row[5],
+                codigo_postal=row[6]
+            )
+            users.append(user)
+
+        cursor.close()
+        conn.close()
+
+        return users
+    except Error as e:
+        raise Exception(f"Error de base de datos: {str(e)}")
+
 @app.post("/add_user/")
 async def create_user(item: Formulario):
     try:
         user = await add_user(item)
         return {"mensaje": "El usuario se ha creado correctamente", "user": user}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/users/")
+async def fetch_users():
+    try:
+        users = await get_users()
+        return users
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
